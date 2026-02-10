@@ -2,7 +2,7 @@
 from ollama import chat
 
 
-def summarize(text: str, max_sentences: int = 10) -> str:
+def summarize(text: str, max_sentences: int = 20) -> str:
     """Shorten long text to at most max_sentences sentences. Use when the TLDR is too long before emailing."""
     if not text or len(text) < 500:
         return text

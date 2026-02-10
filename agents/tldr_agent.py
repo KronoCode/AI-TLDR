@@ -1,7 +1,7 @@
 """TLDR agent: finance tips or business concepts, for beginner / intermediate / expert."""
 from ollama import chat
-
 from config import LEVELS, TOPIC_CHOICES
+
 
 
 def get_tldr(

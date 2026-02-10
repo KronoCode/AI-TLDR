@@ -22,7 +22,7 @@ def _tool_by_name(name: str):
     return {f.__name__: f for f in ORCHESTRATOR_TOOLS}.get(name)
 
 
-def _run_tool(name: str, arguments: dict):
+def run_tool(name: str, arguments: dict):
     fn = _tool_by_name(name)
     if not fn:
         return f"Unknown tool: {name}"
@@ -50,15 +50,21 @@ def run_daily(level: str = "intermediate", topic: str = "finance_tips"):
             messages=messages,
             tools=ORCHESTRATOR_TOOLS,
         )
+        #Get the message from the response
         msg = response.get("message", {});
+        #Add the message to the messages list along with the tool calls if any
         messages.append({"role": "assistant", "content": msg.get("content") or "", "tool_calls": msg.get("tool_calls")})
 
+        #Get the tool calls from the message for this iteration
         tool_calls = msg.get("tool_calls") or []
+        #If there are no tool calls that means the result is ready, return the content of the message
         if not tool_calls:
             return msg.get("content", "")
 
+        #Iterate over the tool calls and run the tool
         for tool in tool_calls:
             fn = tool.get("function") or tool.get("name")
+
             if isinstance(fn, dict):
                 name = fn.get("name")
                 raw_args = fn.get("arguments", "{}")
@@ -66,7 +72,7 @@ def run_daily(level: str = "intermediate", topic: str = "finance_tips"):
                 name = fn
                 raw_args = tool.get("arguments", "{}")
             args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
-            result = _run_tool(name, args)
+            result = run_tool(name, args)
             # Ollama expects tool response format
             messages.append({
                 "role": "tool",
