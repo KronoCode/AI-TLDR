@@ -19,7 +19,7 @@ Daily AI digest: finance/business TLDR (beginner | intermediate | expert) + worl
 
 ```bash
 pip install -r requirements.txt
-# Optional: run Ollama locally with e.g. llama3.2
+# Optional: run Ollama locally with e.g. llama3.1:8b
 python main.py
 ```
 

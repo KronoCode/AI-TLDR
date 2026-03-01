@@ -1,4 +1,8 @@
 ollama
 boto3
-# mlflow
+mlflow
 # transformers
+trafilatura
+smtplib
+urllib
+serpapi

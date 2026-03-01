@@ -9,3 +9,4 @@ EMAIL_FROM = os.environ.get("EMAIL_FROM", "")
 EMAIL_TO = os.environ.get("EMAIL_TO", "")
 # Optional: news API key, etc.
 NEWS_API_KEY = os.environ.get("NEWS_API_KEY", "")
+GROQ_API_KEY = os.environ.get("GROQ_API", "")
