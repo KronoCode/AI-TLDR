@@ -1,7 +1,6 @@
 """TLDR agent: finance tips or business concepts, for beginner / intermediate / expert."""
 
 import serpapi
-from ollama import chat
 from config import NEWS_API_KEY
 import tools.scoring
 import mlflow

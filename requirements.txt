@@ -1,7 +1,6 @@
-ollama
+groq
 boto3
 mlflow
-# transformers
 trafilatura
 smtplib
 urllib

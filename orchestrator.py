@@ -1,8 +1,5 @@
 """Orchestrator: an LLM that reflects on the goal and calls agents/tools by itself."""
 import json
-
-from ollama import chat, ChatResponse  # type: ignore[import-untyped]
-# from mcp_server import run_mcp_server
 import mlflow
 from groq import Groq
 import config
