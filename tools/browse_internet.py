@@ -19,7 +19,9 @@ def browse_internet(search_query : str = "", tbm: str ="") -> str:
     """
     Search the web using SerpAPI.
     
-    Use the tbm parameter to specify the type of search:
+    Use the tbm parameter to specify the type of search.
+    The tbm parameter is optional and if not provided, the search will be a classic web search.
+    This parameter chosen should exactly match the following values:
     - tbm="nws"  → news search (latest articles, press releases)
     - tbm=""     → classic web search (general information)
     - tbm="shop" → shopping search (products, prices)
@@ -34,7 +36,6 @@ def browse_internet(search_query : str = "", tbm: str ="") -> str:
     - "best Python books" → tbm="shop"
     - "what is LangGraph" → tbm=""
     """
-
     web_search = internet_search(search_query, tbm)
     articles = normalize_results(web_search)
 

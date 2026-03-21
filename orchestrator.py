@@ -1,5 +1,6 @@
 """Orchestrator: an LLM that reflects on the goal and calls agents/tools by itself."""
 import json
+from mcp_server import run_mcp_server
 import mlflow
 from groq import Groq
 import config
@@ -23,11 +24,11 @@ Base yourself on this WORKFLOW STATE:
 }
 
 Strictly follow this decision order and do not deviate:
-- If internet_searched == false → scrape the internet for information on the topic given and set it to true.
-- Else if tldr_created == false → create TLDR from the scraped information and set this step to true
-- Else if needs_shortening == true → summarize the TLDR and set this step to true (optional step)
-- Else if email_sent == false → send email with the TLDR and set this step to true
-- Else → reply: "The TLDR mail has been sent."
+1 - If internet_searched == false → choose the right query toscrape the internet for information on the topic given, call the tool and set it to true.
+2 - Else if tldr_created == false → create TLDR from the scraped information and set this step to true
+3 - Else if needs_shortening == true → summarize the TLDR and set this step to true (optional step)
+4 - Else if email_sent == false → send email with the TLDR and set this step to true
+5 - Else → reply: "The TLDR mail has been sent."
 
 A TLDR mail must:
 - Starting paragraph with emojis and text to welcome the reader and introduce the topic.
@@ -81,7 +82,6 @@ def run_tool(name: str, arguments: dict):
 
 @mlflow.trace(name="run_status")
 def run_daily(topic: str = "finance_tips"):
-
     client = Groq(api_key=config.GROQ_API_KEY)
 
     """Let the orchestrator LLM decide and call agents/tools to produce and send the daily TLDR."""
@@ -100,8 +100,6 @@ def run_daily(topic: str = "finance_tips"):
     max_rounds = 7
     for round in range(max_rounds):
 
-        # try:
-        # Call the model
         response = client.chat.completions.create(
             model=ORCHESTRATOR_MODEL,
             messages=messages,
@@ -119,9 +117,6 @@ def run_daily(topic: str = "finance_tips"):
         if msg.tool_calls:
             msg_to_append["tool_calls"] = msg.tool_calls
 
-        # except Exception as e:
-        #     msg_to_append = {"role": "user", "content": f"Resolve this error and advance in your tasks. Error: {e}"}
-
         #Add the message to the messages list along with the tool calls if any
         messages.append(msg_to_append)
 
@@ -132,7 +127,7 @@ def run_daily(topic: str = "finance_tips"):
         for tool in tool_calls:
             tool_name = tool.function.name
             tool_args = json.loads(tool.function.arguments)
-            
+           
             result = run_tool(tool_name, tool_args)
 
             # If the email tool was called and reported success, flag it
@@ -152,9 +147,9 @@ def run_daily(topic: str = "finance_tips"):
     mlflow.log_param("Workflow error", "Max rounds reached.")
     return False
 
-# Or log the full conversation at the end as one artifact
-def log_full_conversation(messages: list):
-    mlflow.log_text(
-        json.dumps(messages, indent=2),
-        "exchanges/full_conversation.json"
-    )
+# # Or log the full conversation at the end as one artifact
+# def log_full_conversation(messages: list):
+#     mlflow.log_text(
+#         json.dumps(messages, indent=2),
+#         "exchanges/full_conversation.json"
+#     )
