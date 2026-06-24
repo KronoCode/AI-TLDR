@@ -68,7 +68,7 @@ class Scoring:
         if date_str:
             try:
                 dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-                article_hours_old = (datetime.now(timezone.utc)-dt).total_seconds / 3600 
+                article_hours_old = (datetime.now(timezone.utc)-dt).total_seconds() / 3600 
 
                 if article_hours_old < 6 : score+=3
                 if article_hours_old < 24 : score+=2
