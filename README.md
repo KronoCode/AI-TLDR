@@ -101,35 +101,9 @@ LLM → tool_call(browse_internet) → Python runs SerpAPI → tool result → L
 
 Below is an illustrative example of the kind of email AI TLDR produces for the topic `How AI impacts geopolitics`. It follows the formatting rules in the orchestrator prompt: a welcoming intro with emojis, one bullet per article, a title and short summary for each, and a source link.
 
-> Example output (illustrative — not a captured run).
+> Example output
 
-```
-Subject: AI TLDR – Daily digest
-
-🌍 Good morning! Here's your daily TLDR on how artificial intelligence is
-reshaping the global balance of power. Three stories stood out today. ☕️
-
-• 🤖 The US–China AI arms race accelerates
-  Washington tightened export controls on advanced AI chips this week, while
-  Beijing announced a fresh round of state funding for domestic models. Analysts
-  warn the split is hardening into two separate technology ecosystems.
-  🔗 https://www.reuters.com/technology/us-china-ai-chip-controls
-
-• 🇪🇺 The EU AI Act enters its enforcement phase
-  New transparency obligations for high-risk AI systems begin to bite, and
-  European officials are positioning the rulebook as a global standard that
-  trading partners will have to reckon with.
-  🔗 https://www.ft.com/content/eu-ai-act-enforcement
-
-• 🛡️ AI moves to the front line of defense
-  Several governments confirmed expanded use of AI for intelligence analysis
-  and autonomous systems, reigniting debate over how much battlefield
-  decision-making should be delegated to machines.
-  🔗 https://www.bloomberg.com/news/ai-defense-procurement
-
----
-📬 You're receiving this because you subscribed to the AI TLDR digest.
-```
+![Example of generated TLDR](image.png)
 
 ## Quick start (local)
 
