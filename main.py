@@ -1,11 +1,11 @@
 """
 AI TLDR – runs daily at 6 AM (AWS EventBridge + Lambda).
-Orchestrates: TLDR agent (finance/business by level), news agent, summarize + email tools.
+Pipeline: search agent (web search + article compression) → orchestrator (TLDR + email).
 """
 import os
 import mlflow
 from orchestrator import run_daily, ORCHESTRATOR_MODEL
-from datetime import date 
+from datetime import date
 from pathlib import Path
 
 EXPERIMENT_NAME_DEBUG = "AI TLDR TEST"

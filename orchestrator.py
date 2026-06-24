@@ -1,6 +1,5 @@
-"""Orchestrator: an LLM that reflects on the goal and calls agents/tools by itself."""
+"""Orchestrator: coordinates search-agent calls, writes the TLDR, and sends email."""
 import json
-from mcp_server import run_mcp_server
 import mlflow
 from groq import Groq
 import config
@@ -8,60 +7,56 @@ from datetime import date
 from tools.registry import GROQ_TOOLS, ORCHESTRATOR_TOOLS
 
 ORCHESTRATOR_MODEL = "openai/gpt-oss-120b"
+MAX_SEARCH_CALLS = 2
 
-SYSTEM_PROMPT = """
+SYSTEM_PROMPT = f"""
 You are the ORCHESTRATOR of the AI TLDR workflow.
 
-Your job is only to decide which tool to call to get the information, create the tldr, shorten it if needed and send me the content via mail.
-If the TLDR exceeds 500 words, needs_shortening = true
+Today current date is {date.today().strftime('%d/%m/%Y')}.
+
+Your job is to coordinate the workflow:
+1. Call the web search agent to get compact article findings.
+2. If findings are weak, incomplete, too broad, or missing links, call the web search agent again with specific feedback.
+3. Once findings are good enough, write the TLDR from those findings.
+4. Shorten it if needed.
+5. Send the final TLDR via email.
+
+If the TLDR exceeds 1000 words, needs_shortening = true
 
 Base yourself on this WORKFLOW STATE:
-{
-  "internet_searched": ,
+{{
+  "web_search_agent_called": ,
+  "findings_accepted": ,
   "tldr_created": ,
   "needs_shortening": ,
   "email_sent": 
-}
+}}
 
 Strictly follow this decision order and do not deviate:
-1 - If internet_searched == false → choose the right query toscrape the internet for information on the topic given, call the tool and set it to true.
-2 - Else if tldr_created == false → create TLDR from the scraped information and set this step to true
-3 - Else if needs_shortening == true → summarize the TLDR and set this step to true (optional step)
-4 - Else if email_sent == false → send email with the TLDR and set this step to true
-5 - Else → reply: "The TLDR mail has been sent."
+1 - If web_search_agent_called == false → call web search agent with the topic.
+2 - Else if findings_accepted == false and findings are weak → call the agent again with concise feedback and previous compact findings.
+3 - Else if tldr_created == false → create TLDR from the accepted findings and set this step to true.
+4 - Else if needs_shortening == true → summarize the TLDR and set this step to true (optional step).
+5 - Else if email_sent == false → call send_email with the TLDR and set this step to true.
+6 - Else → reply: "The TLDR mail has been sent."
 
 A TLDR mail must:
 - Starting paragraph with emojis and text to welcome the reader and introduce the topic.
+- Set 1 bullet point per article found on the internet.
 - Have a title for each information or topic found.
-- Have 3 to 5 numbered items on the information found on the topic, each one explained with a max 5 sentence paragraph
 - Have a link at the bottom of the bullet point redirecting to the article source website. 
-
-You can use the same format as the TLDR Example below:  
-<start>
-## 🗞️ TLDR - Tech & AI Daily | February 28, 2026
-
-**1. OpenAI launches GPT-5**
-OpenAI released its latest model claiming 50% better reasoning than GPT-4. Early benchmarks show strong performance on coding tasks.
-🔗 https://example.com/openai-gpt5
-
-**2. EU passes new AI regulation**
-The European Union voted to enforce mandatory transparency rules for AI systems used in hiring and healthcare starting 2027.
-🔗 https://example.com/eu-ai-law
-
-**3. Apple acquires AI startup**
-Apple quietly acquired a computer vision startup for $200M, signaling a push toward on-device AI features in iOS 20.
-🔗 https://example.com/apple-acquisition
-
----
-📬 You're receiving this because you subscribed to the TLDR digest.
-<end>
+- Use emojis to make the TLDR more engaging.
 
 RULES:
 - Call exactly ONE tool per response when needed.
 - Never repeat completed steps.
 - Never invent tools.
 - Use tool results and workflow_state only.
+- Never ask search_articles to return raw article bodies.
+- When calling search_articles again, pass only compact previous findings and specific feedback.
 - Do not explain reasoning when calling tools.
+- You may call search_articles at most {MAX_SEARCH_CALLS} times. Stop searching as soon as the findings are good enough.
+- Once a tool result tells you the search limit is reached, do not search again: write the TLDR from the findings you already have and send the email.
 - You must either call exactly one tool OR return the final confirmation message.
 """
 
@@ -84,11 +79,12 @@ def run_tool(name: str, arguments: dict):
 def run_daily(topic: str = "finance_tips"):
     client = Groq(api_key=config.GROQ_API_KEY)
 
-    """Let the orchestrator LLM decide and call agents/tools to produce and send the daily TLDR."""
+    """Let the orchestrator call the search agent, write the TLDR, and send it."""
     user_goal = (
         f"""
         Create a TLDR mail on the following topic and send it to me via email : '{topic.replace('_',' ')}'.
         Today current date is {date.today().strftime('%d/%m/%Y')}.
+        You can call search_articles multiple times before sending the email if you need better findings.
         """
     )
     messages = [
@@ -98,14 +94,14 @@ def run_daily(topic: str = "finance_tips"):
 
     mlflow.log_param("llm_tools", ",".join(x.__name__ for x in ORCHESTRATOR_TOOLS))
     max_rounds = 7
+    search_calls = 0
     for round in range(max_rounds):
-
         response = client.chat.completions.create(
             model=ORCHESTRATOR_MODEL,
             messages=messages,
             tools=GROQ_TOOLS,
             tool_choice="auto",
-            max_tokens=2048,
+            max_tokens=4096,
             extra_body={"reasoning_effort": "medium"}
         )
 
@@ -127,16 +123,25 @@ def run_daily(topic: str = "finance_tips"):
         for tool in tool_calls:
             tool_name = tool.function.name
             tool_args = json.loads(tool.function.arguments)
-           
-            result = run_tool(tool_name, tool_args)
 
-            # If the email tool was called and reported success, flag it
+            # Cap how many times the search agent can be called
+            if tool_name == "search_articles" and search_calls >= MAX_SEARCH_CALLS:
+                result = (
+                    f"Search limit reached ({MAX_SEARCH_CALLS} calls). "
+                    "Do NOT call search_articles again. "
+                    "Use the most recent findings handoff you already received to write the "
+                    "TLDR and send the mail now."
+                )
+            else:
+                if tool_name == "search_articles":
+                    search_calls += 1
+                result = run_tool(tool_name, tool_args)
+
             if tool_name == "send_email" and "Email sent." in str(result):
+                mlflow.log_metric("search_calls", search_calls)
                 mlflow.log_metric("nbr_of_rounds", round)
-                # log_full_conversation(messages)
                 return True
 
-            # Ollama expects tool response format
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool.id,

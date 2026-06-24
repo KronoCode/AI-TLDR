@@ -1,6 +1,7 @@
 import re
 import requests
 import trafilatura
+from config import MAX_ARTICLES
 from urllib.parse import urlparse
 from datetime import datetime,timezone
 
@@ -50,9 +51,9 @@ class Scoring:
     #endregion
     #region RESULT SCORING
 
-    def select_top_articles(self, articles, k=3):
+    def select_top_articles(self, articles):
         ranked_articles = sorted(articles, key=self.score_article, reverse=True)
-        return ranked_articles[:k]
+        return ranked_articles[:MAX_ARTICLES]
 
     def score_article(self, article):
         score = 0

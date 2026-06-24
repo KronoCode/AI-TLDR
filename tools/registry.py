@@ -1,37 +1,18 @@
-"""Registry of tools/agents the orchestrator LLM can call. Docstrings and types define the tool schema."""
+"""Tool registries scoped by the LLM actor that can call them."""
 
+from agents.search_agent import search_articles
 from tools.browse_internet import browse_internet
+from tools.schema import function_to_tool_schema
 from tools.send_email import send_email
 
-# Orchestrator receives these as tools; it decides when to call each.
-ORCHESTRATOR_TOOLS = [browse_internet, send_email]
+SEARCH_AGENT_TOOLS = [browse_internet]
+AGENT_TOOLS = [search_articles]
+API_TOOLS = [send_email]
+ORCHESTRATOR_TOOLS = AGENT_TOOLS + API_TOOLS
 
 
-def function_to_tool_schema(func):
-    hints = func.__annotations__
-    properties = {}
-    required = []
-    
-    for param, type_ in hints.items():
-        if param == "return":
-            continue
-        properties[param] = {
-            "type": "string"  # extend this if you have int/bool params
-        }
-        required.append(param)
-    
-    return {
-        "type": "function",
-        "function": {
-            "name": func.__name__,
-            "description": func.__doc__ or "",
-            "parameters": {
-                "type": "object",
-                "properties": properties,
-                "required": required
-            }
-        }
-    }
+GROQ_SEARCH_TOOLS = [function_to_tool_schema(f) for f in SEARCH_AGENT_TOOLS]
+GROQ_ORCHESTRATOR_TOOLS = [function_to_tool_schema(f) for f in ORCHESTRATOR_TOOLS]
 
-# Convert your list automatically
-GROQ_TOOLS = [function_to_tool_schema(f) for f in ORCHESTRATOR_TOOLS]
+# Backward-compatible alias
+GROQ_TOOLS = GROQ_ORCHESTRATOR_TOOLS

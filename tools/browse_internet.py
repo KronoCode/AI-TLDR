@@ -31,10 +31,10 @@ def browse_internet(search_query : str = "", tbm: str ="") -> str:
     
     Always pick the most appropriate tbm value based on the user's request.
     Examples:
-    - "latest AI news" → tbm="nws"
-    - "Tesla stock price" → tbm="fin"
-    - "best Python books" → tbm="shop"
-    - "what is LangGraph" → tbm=""
+    - "latest AI news." → tbm="nws"
+    - "Tesla stock price." → tbm="fin"
+    - "uniqlo t shirt white." → tbm="shop"
+    - "what is LangGraph and how it works?" → tbm=""
     """
     web_search = internet_search(search_query, tbm)
     articles = normalize_results(web_search)
@@ -51,7 +51,7 @@ def browse_internet(search_query : str = "", tbm: str ="") -> str:
         body = article.get("body") or ""
         link = article.get("link") or ""
         if body:
-            concatenated += f"[START ARTICLE {article_nbr}]\n" + body.strip() + f"\n**Link article source**:{link}" + f"\n[END ARTICLE {article_nbr}]\n"
+            concatenated += f"[ARTICLE {article_nbr} START]\n" + body.strip() + f"\n[ARTICLE {article_nbr} SOUCE START] {link} [ARTICLE {article_nbr} SOUCE END]" + f"\n[ARTICLE {article_nbr} END]\n"
 
     return concatenated
 

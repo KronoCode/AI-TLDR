@@ -2,7 +2,7 @@
 import os
 
 LEVELS = ("beginner", "intermediate", "expert")
-TOPIC_CHOICES = ("finance_tips", "business_concepts")
+MAX_ARTICLES = 5
 
 # Email (e.g. SES in AWS)
 EMAIL_FROM = os.environ.get("EMAIL_FROM", "")
