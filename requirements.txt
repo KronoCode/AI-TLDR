@@ -2,6 +2,4 @@ groq
 boto3
 mlflow
 trafilatura
-smtplib
-urllib
 serpapi
