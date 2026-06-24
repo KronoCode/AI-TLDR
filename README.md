@@ -103,7 +103,7 @@ Below is an illustrative example of the kind of email AI TLDR produces for the t
 
 > Example output
 
-![Example of generated TLDR](image.png)
+![Example newsletter received by email](docs/images/newsletter_example.png)
 
 ## Quick start (local)
 
