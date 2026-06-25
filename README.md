@@ -2,6 +2,8 @@
 
 A daily AI-generated newsletter on a configurable topic, summarized and delivered straight to your inbox. It runs **once per day at 6 AM** on AWS (EventBridge + Lambda), or locally on demand.
 
+I built this project as a public stand-in for proprietary work I cannot share: an agentic newsletter automation system that demonstrates orchestration, tool use, structured inter-agent handoffs, retrieval/extraction, ranking, scheduled execution, and observability.
+
 Give it a topic such as `How AI impacts geopolitics`, and two cooperating LLM agents search the web, distill the best articles, write a friendly digest, and email it to you.
 
 ## How it works
@@ -96,6 +98,46 @@ The whole thing is a tool-calling loop in both directions:
 ```
 LLM → tool_call(browse_internet) → Python runs SerpAPI → tool result → LLM → ... → JSON handoff
 ```
+
+## Reliability and quality
+
+This section documents how the pipeline guards against common failure modes. It reflects exactly what the code does today, including the parts that are intentionally still open.
+
+### How is article quality enforced?
+
+There is no single "is the newsletter good?" score. Quality is enforced in two layers:
+
+- **Article-level filtering.** Before anything reaches the model, candidate articles are ranked and filtered in [tools/scoring.py](tools/scoring.py) and [tools/browse_internet.py](tools/browse_internet.py). Only the top `MAX_ARTICLES` are kept, and any article whose extracted body is shorter than ~100 words is dropped (`good_articles` filter in [tools/browse_internet.py](tools/browse_internet.py)).
+- **Orchestrator self-review.** The orchestrator inspects each handoff and, if the findings look weak or incomplete, calls the search agent again (up to 2 times total) with concrete feedback ([orchestrator.py](orchestrator.py)). This is an LLM judgment step, not a numeric quality gate.
+
+### How are bad sources detected?
+
+Each result is scored by domain trust. Domains on the trusted domains whitelist (Reuters, Bloomberg, WSJ, FT, and so on) get a score boost, so trusted outlets are preferred when selecting the top articles.
+
+### How are stale articles detected?
+
+A freshness score is also applied from each result's published date: articles under 6 hours old score highest, then under 24 hours, then under 72 hours. Older articles simply accumulate less score and tend to fall below the top cutoff.
+
+### How is handoff validity checked?
+
+Every handoff passes through a check before the orchestrator sees it:
+
+- `parse_search_handoff` strips markdown fences and extracts the JSON object, raising on empty or non-JSON content.
+- `validate_and_trim_handoff` requires an `articles` list, drops any entry missing a title, summary, or url, trims summaries to 80 words, caps the list at `MAX_ARTICLES`, and rejects payloads larger than 8000 characters.
+
+Note: this is **runtime validation**, not a unit-test suite — there are currently no automated tests in the repository.
+
+### What happens when search fails?
+
+Any exception becomes an `Error: ...` string that is fed back to the model instead of crashing the run. If the search simply returns nothing, `normalize_results` yields an empty list and the agent can search again on its next round.
+
+### What happens when extraction fails?
+
+If a page can't be fetched or trafilatura can't extract a body, the article is marked and is filtered out by the check, so failed extractions never reach the newsletter.
+
+### What happens when the LLM returns malformed JSON?
+
+The handoff build has a one-shot repair path : if parsing or validation fails, a re-ask mechanism is used by the model for valid JSON (no new searching). If the retry still fails, the agent returns a safe empty handoff `{"articles": []}` and logs the error to MLflow rather than propagating a crash.
 
 ## Example newsletter
 
